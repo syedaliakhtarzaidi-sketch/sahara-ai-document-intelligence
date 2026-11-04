@@ -222,103 +222,73 @@ if page == "Shipment Analysis":
     if result:
         st.divider()
         findings=result.get("findings",[])
-        summary=result.get("summary",{})
-        total=len(findings)
         mismatch=sum(1 for x in findings if x.get("status")=="MISMATCH")
         missing=sum(1 for x in findings if x.get("status")=="MISSING")
         review=sum(1 for x in findings if x.get("status")=="REVIEW")
         matched=sum(1 for x in findings if x.get("status")=="MATCH")
-        st.markdown('<div class="section-head"><span class="section-no">03</span> Verification overview</div>',unsafe_allow_html=True)
-        x1,x2,x3,x4=st.columns(4)
-        for col,label,value in [(x1,"MISMATCH",mismatch),(x2,"MISSING",missing),(x3,"REVIEW",review),(x4,"MATCH",matched)]:
+
+        st.markdown('<div class="section-head"><span class="section-no">03</span> Shipment result</div>',unsafe_allow_html=True)
+        if mismatch or missing:
+            st.error("ISSUES FOUND — Please review the highlighted items below.")
+        elif review:
+            st.warning("REVIEW REQUIRED — Some details need manual checking.")
+        else:
+            st.success("NO MISMATCH DETECTED — Please still verify the original documents.")
+
+        k1,k2,k3,k4=st.columns(4)
+        for col,label,value in [(k1,"MATCH",matched),(k2,"MISMATCH",mismatch),(k3,"MISSING",missing),(k4,"REVIEW",review)]:
             with col:
                 st.markdown(f'<div class="kpi"><div class="l">{label}</div><div class="v">{value}</div></div>',unsafe_allow_html=True)
-        if mismatch or missing:
-            st.error("Discrepancies or missing information found. Do not approve shipment documents until reviewed.")
-        elif review:
-            st.warning("Some items require human review. No clean approval should be inferred.")
-        else:
-            st.success("No material discrepancy was detected in the fields that could be compared. This is not a customs clearance approval.")
 
-        st.markdown('<div class="section-head"><span class="section-no">04</span> Cross-document findings</div>',unsafe_allow_html=True)
+        st.markdown('<div class="section-head"><span class="section-no">04</span> Document checks</div>',unsafe_allow_html=True)
         if findings:
-            import html
-            status_filter = st.selectbox(
-                "Filter findings by status",
-                ["All findings", "MISMATCH", "MISSING", "REVIEW", "MATCH"],
-                key="finding_status_filter"
-            )
-            visible_findings = findings if status_filter == "All findings" else [x for x in findings if x.get("status") == status_filter]
-            st.markdown(
-                f'<div style="display:flex;justify-content:space-between;align-items:center;'
-                f'background:#101D2A;border:1px solid #294153;border-radius:10px;padding:11px 15px;'
-                f'margin:5px 0 15px;color:#B9C9D3;font-size:12px;">'
-                f'<span>SHOWING <b style="color:#FFFFFF;">{len(visible_findings)}</b> OF {len(findings)} CHECKS</span>'
-                f'<span style="color:#65D9D0;">EVIDENCE-LED REVIEW</span></div>',
-                unsafe_allow_html=True
-            )
-            status_styles = {
-                "MATCH": ("#153B32", "#72D6A6", "✓"),
-                "MISMATCH": ("#48252B", "#FF8992", "!"),
-                "MISSING": ("#49391F", "#F2C36D", "—"),
-                "REVIEW": ("#243A53", "#8FC4FF", "?")
-            }
-            for row_start in range(0, len(visible_findings), 2):
-                card_cols = st.columns(2, gap="medium")
-                for offset, col in enumerate(card_cols):
-                    idx = row_start + offset
-                    if idx >= len(visible_findings):
-                        continue
-                    item = visible_findings[idx]
-                    status = item.get("status", "REVIEW")
-                    bg, fg, symbol = status_styles.get(status, status_styles["REVIEW"])
-                    field_name = html.escape(str(item.get("field", "Unlabelled field")))
-                    values = html.escape(str(item.get("normalised_values") or "No value extracted"))
-                    comment = html.escape(str(item.get("comment") or "No additional comment"))
-                    with col:
-                        st.markdown(
-                            f'<div style="background:linear-gradient(145deg,#142536,#101B28);'
-                            f'border:1px solid #2A4355;border-radius:13px;padding:16px 17px 14px;'
-                            f'min-height:150px;margin-bottom:8px;">'
-                            f'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">'
-                            f'<div style="font-size:13px;font-weight:700;color:#F4F8FA;">{field_name}</div>'
-                            f'<span style="white-space:nowrap;background:{bg};color:{fg};border:1px solid {fg}55;'
-                            f'border-radius:20px;padding:4px 9px;font-size:9px;font-weight:800;letter-spacing:1px;">'
-                            f'{symbol} &nbsp;{status}</span></div>'
-                            f'<div style="font-size:9px;color:#8EA5B5;letter-spacing:1.3px;margin-top:15px;">'
-                            f'EXTRACTED VALUE(S)</div>'
-                            f'<div style="font-size:12px;line-height:1.6;color:#EAF2F5;margin-top:5px;'
-                            f'overflow-wrap:anywhere;">{values}</div>'
-                            f'<div style="border-top:1px solid #2A4051;margin-top:12px;padding-top:9px;'
-                            f'font-size:11px;line-height:1.5;color:#B5C5CF;">{comment}</div></div>',
-                            unsafe_allow_html=True
-                        )
-                        with st.expander("View document evidence", expanded=False):
-                            st.write(item.get("evidence") or "No supporting document evidence was extracted.")
+            rows=[]
+            for item in findings:
+                status=item.get("status","REVIEW")
+                values=item.get("normalised_values") or "No value extracted"
+                comment=item.get("comment") or ""
+                rows.append({
+                    "Check": item.get("field","Unlabelled field"),
+                    "Result": status,
+                    "Details": str(values) + ((" — " + str(comment)) if comment else "")
+                })
+            checks_df=pd.DataFrame(rows)
+            st.dataframe(checks_df,use_container_width=True,hide_index=True)
+            issues=[r for r in rows if r["Result"] in ("MISMATCH","MISSING","REVIEW")]
+            if issues:
+                with st.expander(f"View issues requiring attention ({len(issues)})",expanded=True):
+                    st.dataframe(pd.DataFrame(issues),use_container_width=True,hide_index=True)
+            else:
+                st.success("No issues were flagged in the fields compared.")
+            with st.expander("View document evidence",expanded=False):
+                for item in findings:
+                    st.markdown(f"**{item.get('field','Check')} — {item.get('status','REVIEW')}**")
+                    st.write(item.get("evidence") or "No supporting evidence extracted.")
         else:
-            st.info("No comparable fields were extracted. Check the document extraction section and API/OCR configuration.")
+            st.info("No comparable fields were extracted. Check document details and AI/OCR settings.")
 
         st.markdown('<div class="section-head"><span class="section-no">05</span> Extracted document details</div>',unsafe_allow_html=True)
         for doc in result.get("documents",[]):
-            with st.expander(f"{doc.get('document_type','Unknown')} · {doc.get('filename','')}", expanded=False):
+            with st.expander(f"{doc.get('document_type','Unknown')} · {doc.get('filename','')}",expanded=False):
                 st.write("**Classification confidence:**",doc.get("classification_confidence","Not provided"))
                 st.write("**Pages / text evidence:**",doc.get("page_count",0))
                 st.json(doc.get("data",{}))
                 if doc.get("warnings"):
                     st.warning(" · ".join(doc["warnings"]))
 
-        st.markdown('<div class="section-head"><span class="section-no">06</span> Supplier follow-up draft</div>',unsafe_allow_html=True)
+        st.markdown('<div class="section-head"><span class="section-no">06</span> Supplier follow-up</div>',unsafe_allow_html=True)
         email=build_supplier_email(result)
-        st.text_area("Draft only — review before sending",value=email,height=260)
-        st.download_button("Download supplier email (.txt)",email.encode("utf-8"),file_name="sahara_supplier_discrepancy_email.txt")
-        st.markdown('<div class="section-head"><span class="section-no">07</span> Export review reports</div>',unsafe_allow_html=True)
+        st.text_area("Email draft — review before sending",value=email,height=220)
+        st.download_button("Download email (.txt)",email.encode("utf-8"),file_name="sahara_supplier_discrepancy_email.txt")
+
+        st.markdown('<div class="section-head"><span class="section-no">07</span> Download report</div>',unsafe_allow_html=True)
         ex1,ex2=st.columns(2)
         with ex1:
             xlsx=make_excel_report(result)
-            st.download_button("Download Excel verification report",xlsx,file_name="sahara_shipment_verification.xlsx",mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",use_container_width=True)
+            st.download_button("Download Excel",xlsx,file_name="sahara_shipment_verification.xlsx",mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",use_container_width=True)
         with ex2:
             pdf=make_pdf_report(result)
-            st.download_button("Download PDF verification report",pdf,file_name="sahara_shipment_verification.pdf",mime="application/pdf",use_container_width=True)
+            st.download_button("Download PDF",pdf,file_name="sahara_shipment_verification.pdf",mime="application/pdf",use_container_width=True)
 
 elif page == "Shipment History":
     st.markdown('<div class="hero"><div class="agent-chip"><span class="agent-dot"></span> AGENT MEMORY / LOCAL ARCHIVE</div><div class="hero-kicker">SAHARA AI · RECORDS</div><h1>Shipment history.</h1><p>Review previously processed shipments and revisit the records saved in this app environment.</p><span class="hero-tag">Review archive</span></div>',unsafe_allow_html=True)
