@@ -74,7 +74,11 @@ if page == "Shipment Analysis":
     st.caption("Accepted: Bill of Lading, invoice, packing list, COO, EUR.1, phytosanitary, fumigation, allergen, organic COI and supporting documents.")
 
     with st.expander("AI connection and processing settings", expanded=not bool(os.getenv("OPENAI_API_KEY"))):
-        api_key = st.text_input("OpenAI API key", type="password", value=os.getenv("OPENAI_API_KEY",""), help="Used only for this session unless configured as a server secret.")
+        try:
+            configured_api_key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY", ""))
+        except Exception:
+            configured_api_key = os.getenv("OPENAI_API_KEY", "")
+        api_key = st.text_input("OpenAI API key", type="password", value=configured_api_key, help="Loaded from Streamlit Secrets or environment variables.")
         model = st.selectbox("Analysis model", ["gpt-4.1","gpt-4.1-mini"], index=1)
         st.caption("Without an API key, the app can still extract selectable PDF text and produce a basic evidence inventory, but AI classification and reasoning will be disabled.")
         include_page_images = st.checkbox("Use vision analysis for scanned / image-based PDF pages", value=True)
