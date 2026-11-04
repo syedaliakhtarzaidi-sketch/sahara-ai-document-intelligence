@@ -240,6 +240,21 @@ if page == "Shipment Analysis":
             with col:
                 st.markdown(f'<div class="kpi"><div class="l">{label}</div><div class="v">{value}</div></div>',unsafe_allow_html=True)
 
+        # Surface extraction failures before presenting a wall of NOT SHOWN cells.
+        extracted_total = sum(
+            1 for d in docs for v in d.get("data", {}).values()
+            if v not in (None, "", [])
+        )
+        if extracted_total == 0:
+            st.error("NO DOCUMENT DATA EXTRACTED — The PDFs were not readable by the current extraction route.")
+        for d in docs:
+            warnings = d.get("warnings", [])
+            if warnings:
+                with st.expander(f"Reading issue · {d.get('filename', 'Document')}", expanded=(extracted_total == 0)):
+                    st.write("\n".join(f"• {w}" for w in warnings))
+                    st.write(f"Document type: {d.get('document_type', 'Unknown')}")
+                    st.write(f"Extracted fields: {sum(1 for v in d.get('data', {}).values() if v not in (None, '', []))}")
+
         st.markdown("**Document comparison**")
         if findings and docs:
             doc_headers=[]
