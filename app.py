@@ -119,6 +119,30 @@ hr{border-color:#263B4D;}
   color: #F1F5F8 !important;
 }
 
+
+/* DARKEN UPLOAD AND AI SETTINGS CONTROLS */
+div[data-testid="stFileUploader"] button,
+div[data-testid="stFileUploader"] [data-testid="stBaseButton-secondary"] {
+  background: #142638 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #3A586D !important;
+  border-radius: 8px !important;
+}
+div[data-testid="stFileUploader"] button:hover,
+div[data-testid="stFileUploader"] [data-testid="stBaseButton-secondary"]:hover {
+  background: #1B3449 !important;
+  border-color: #65D9D0 !important;
+}
+div[data-testid="stExpander"] > details > summary,
+div[data-testid="stExpander"] > details > summary:hover {
+  background: #142638 !important;
+  color: #FFFFFF !important;
+  border-radius: 9px !important;
+}
+div[data-testid="stExpander"] > details > summary * {
+  color: #FFFFFF !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
