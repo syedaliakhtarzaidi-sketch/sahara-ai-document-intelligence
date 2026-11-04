@@ -34,7 +34,7 @@ SYSTEM_PROMPT = """You are Sahara UK Foods' import-document review analyst. Read
  "evidence":[{"field":"field_name","value":"exact visible value","page":1,"quote":"short verbatim excerpt"}],
  "warnings":["uncertain, illegible, absent or conflicting interpretation notes"]
 }
-Use null for absent values, [] for absent lists. Do not infer palletization from the fact that a container is dry. Container type: dry/reefer only when explicit evidence. Loading method: palletized only when pallets explicitly shown; handball only when explicitly stated; otherwise null. Keep units in weight strings. Preserve source language if necessary. If a value is uncertain, use null and explain in warnings."""
+Use null for absent values, [] for absent lists. Treat form instructions, printed guidance, checkboxes, labels, section headings and boilerplate as NOT data. Never use words such as ATTACHED, FINAL, WEIGHT, VOY., NAME & ADDRESS, GOODS, or generic form prompts as extracted values. For every non-null field, provide evidence quote that contains the value or clearly identifies the labelled field. Do not infer palletization from the fact that a container is dry. Container type: dry/reefer only when explicit evidence. Loading method: palletized only when pallets explicitly shown; handball only when explicitly stated; otherwise null. Keep units in weight strings. Preserve source language if necessary. If a value is uncertain, use null and explain in warnings."""
 
 def _pdf_text_and_images(data, use_vision=True):
     pages=[]
@@ -67,57 +67,96 @@ def _call_openai(prompt, api_key, model, image_bytes=None):
     )
     return json.loads(response.choices[0].message.content)
 
+def _clean_value(field, value):
+    """Reject obvious form boilerplate and heading fragments."""
+    if value is None:
+        return None
+    if isinstance(value, list):
+        cleaned=[_clean_value(field,x) for x in value]
+        return [x for x in cleaned if x] or []
+    value=re.sub(r"\s+"," ",str(value)).strip(" \t\r\n:;,-")
+    if not value:
+        return None
+    upper=value.upper().strip(" .:")
+    junk={
+      "ATTACHED","FINAL","WEIGHT","VOY.","VOY","GOODS","OF GOODS",
+      "NAME & ADDRESS","NAME AND ADDRESS","S' DANGEROUS GOODS / HAZMAT OR OTHER",
+      "DANGEROUS GOODS / HAZMAT OR OTHER","NOT APPLICABLE","N/A","NIL",
+      "DESCRIPTION","SHIPPER","CONSIGNEE","EXPORTER","IMPORTER","SUPPLIER",
+      "PORT OF LOADING","PORT OF DISCHARGE","COUNTRY OF ORIGIN",
+      "COMMERCIAL INVOICE","PACKING LIST","BILL OF LADING"
+    }
+    if upper in junk or len(upper)<2:
+        return None
+    if field in ("bl_number","invoice_number","certificate_number") and upper in {"ATTACHED","ENCLOSED","AS ATTACHED","SEE ATTACHED"}:
+        return None
+    if field in ("supplier_exporter","consignee_importer","notify_party","product_description","port_of_loading","port_of_discharge","vessel","voyage"):
+        if upper in {"VOY","VOY.","FINAL","WEIGHT","GOODS","OF GOODS","NAME & ADDRESS"}:
+            return None
+    return value
+
 def _basic_extract(filename, pages):
     text="\n".join(x.get("text","") for x in pages)
     data={k:None for k in FIELDS}; evidence=[]
-
-    # Conservative labelled-field extraction for selectable-text PDFs.
+    # Patterns require a clear label/value relationship; avoid generic table headings.
     patterns={
       "container_number":r"\b[A-Z]{4}\s?\d{7}\b",
-      "seal_number":r"(?:seal(?:\s*(?:no|number))?|container\s*seal)\s*[:#-]?\s*([A-Z0-9/-]{4,})",
-      "bl_number":r"(?:B\s*/\s*L|BILL\s+OF\s+LADING)\s*(?:NO\.?|NUMBER|#)?\s*[:#-]?\s*([A-Z0-9/-]{5,})",
-      "invoice_number":r"(?:COMMERCIAL\s+)?INVOICE\s*(?:NO\.?|NUMBER|#)?\s*[:#-]\s*([A-Z0-9/-]{3,})",
-      "hs_code":r"(?:HS(?:\s*CODE)?|HARMONI[ZS]ED\s+CODE|COMMODITY\s+CODE)\s*[:#-]?\s*([0-9.]{6,12})",
-      "country_of_origin":r"(?:COUNTRY\s+OF\s+ORIGIN|ORIGIN\s+OF\s+GOODS)\s*[:#-]?\s*([A-Z][A-Z ,()-]{2,45})",
-      "port_of_loading":r"(?:PORT\s+OF\s+LOADING|PLACE\s+OF\s+RECEIPT)\s*[:#-]?\s*([A-Z][A-Z ,()-]{2,55})",
-      "port_of_discharge":r"(?:PORT\s+OF\s+DISCHARGE|PORT\s+OF\s+DESTINATION)\s*[:#-]?\s*([A-Z][A-Z ,()-]{2,55})",
-      "vessel":r"(?:VESSEL|SHIP\s+NAME)\s*[:#-]?\s*([A-Z0-9][A-Z0-9 .'-]{2,50})",
-      "voyage":r"(?:VOYAGE|VOY(?:AGE)?\s*NO\.?)\s*[:#-]?\s*([A-Z0-9/-]{2,20})",
-      "cartons_packages":r"(?:TOTAL\s+)?(?:NO\.?\s+OF\s+)?(?:CARTONS|PACKAGES|PKGS|CASES)\s*[:#-]?\s*([0-9,]+(?:\s*(?:CARTONS|PACKAGES|PKGS|CASES))?)",
-      "net_weight":r"(?:NET\s+WEIGHT|N\.?\s*W\.?)\s*[:#-]?\s*([0-9,.]+\s*(?:KG|KGS|MT|TONS?)?)",
-      "gross_weight":r"(?:GROSS\s+WEIGHT|G\.?\s*W\.?)\s*[:#-]?\s*([0-9,.]+\s*(?:KG|KGS|MT|TONS?)?)",
-      "product_description":r"(?:DESCRIPTION\s+OF\s+GOODS|PRODUCT\s+DESCRIPTION|GOODS\s+DESCRIPTION)\s*[:#-]?\s*([^\n]{3,120})",
-      "supplier_exporter":r"(?:EXPORTER|SHIPPER|SELLER|SUPPLIER)\s*[:#-]?\s*([^\n]{3,120})",
-      "consignee_importer":r"(?:CONSIGNEE|IMPORTER|BUYER)\s*[:#-]?\s*([^\n]{3,120})",
-      "lot_numbers":r"(?:LOT|BATCH)\s*(?:NO\.?|NUMBER|#)?\s*[:#-]?\s*([A-Z0-9, /-]{3,60})"
+      "seal_number":r"(?im)^\s*(?:CONTAINER\s+)?SEAL(?:\s*(?:NO|NUMBER))?\s*[:#-]\s*([A-Z0-9/-]{5,})\s*$",
+      "bl_number":r"(?im)^\s*(?:B\s*/\s*L|BILL\s+OF\s+LADING)\s*(?:NO\.?|NUMBER|#)\s*[:#-]\s*([A-Z0-9/-]{5,})\s*$",
+      "invoice_number":r"(?im)^\s*(?:COMMERCIAL\s+)?INVOICE\s*(?:NO\.?|NUMBER|#)\s*[:#-]\s*([A-Z0-9/-]{3,})\s*$",
+      "hs_code":r"(?im)^\s*(?:HS(?:\s*CODE)?|HARMONI[ZS]ED\s+CODE|COMMODITY\s+CODE)\s*[:#-]\s*([0-9.]{6,12})\s*$",
+      "country_of_origin":r"(?im)^\s*(?:COUNTRY\s+OF\s+ORIGIN|ORIGIN\s+OF\s+GOODS)\s*[:#-]\s*([A-Z][A-Z ,()-]{2,45})\s*$",
+      "port_of_loading":r"(?im)^\s*PORT\s+OF\s+LOADING\s*[:#-]\s*([A-Z][A-Z ,()-]{2,55})\s*$",
+      "port_of_discharge":r"(?im)^\s*PORT\s+OF\s+DISCHARGE\s*[:#-]\s*([A-Z][A-Z ,()-]{2,55})\s*$",
+      "vessel":r"(?im)^\s*(?:VESSEL(?:\s+NAME)?|SHIP\s+NAME)\s*[:#-]\s*([A-Z0-9][A-Z0-9 .'-]{2,50})\s*$",
+      "voyage":r"(?im)^\s*VOYAGE(?:\s+NO\.?)?\s*[:#-]\s*([A-Z0-9/-]{2,20})\s*$",
+      "cartons_packages":r"(?im)^\s*(?:TOTAL\s+)?(?:NO\.?\s+OF\s+)?(?:CARTONS|PACKAGES|PKGS|CASES)\s*[:#-]\s*([0-9,]+(?:\s*(?:CARTONS|PACKAGES|PKGS|CASES))?)\s*$",
+      "net_weight":r"(?im)^\s*(?:NET\s+WEIGHT|N\.?\s*W\.?)\s*[:#-]\s*([0-9,.]+\s*(?:KG|KGS|MT|TONS?)?)\s*$",
+      "gross_weight":r"(?im)^\s*(?:GROSS\s+WEIGHT|G\.?\s*W\.?)\s*[:#-]\s*([0-9,.]+\s*(?:KG|KGS|MT|TONS?)?)\s*$",
+      "product_description":r"(?im)^\s*(?:DESCRIPTION\s+OF\s+GOODS|PRODUCT\s+DESCRIPTION|GOODS\s+DESCRIPTION)\s*[:#-]\s*([^\n]{4,120})$",
+      "supplier_exporter":r"(?im)^\s*(?:EXPORTER|SHIPPER|SELLER|SUPPLIER)\s*[:#-]\s*([^\n]{4,120})$",
+      "consignee_importer":r"(?im)^\s*(?:CONSIGNEE|IMPORTER|BUYER)\s*[:#-]\s*([^\n]{4,120})$",
+      "lot_numbers":r"(?im)^\s*(?:LOT|BATCH)\s*(?:NO\.?|NUMBER|#)\s*[:#-]\s*([A-Z0-9, /-]{3,60})\s*$"
     }
     for field,pat in patterns.items():
-        m=re.search(pat,text,re.I)
+        m=re.search(pat,text,re.I|re.M)
         if m:
-            val=(m.group(1) if m.lastindex else m.group(0)).strip(" \t\r\n:;-")
-            data[field]=val
-            evidence.append({"field":field,"value":val,"page":1,"quote":m.group(0)[:160]})
+            val=_clean_value(field,m.group(1) if m.lastindex else m.group(0))
+            if val:
+                data[field]=val
+                evidence.append({"field":field,"value":val,"page":1,"quote":m.group(0)[:160]})
+
+    # Container IDs are distinctive, but do not accept a value embedded in an unrelated example.
+    m=re.search(r"(?i)(?:container(?:\s*(?:no|number))?\s*[:#-]?\s*)([A-Z]{4}\s?\d{7})",text)
+    if m:
+        val=m.group(1).replace(" ","").upper()
+        data["container_number"]=val
+        evidence.append({"field":"container_number","value":val,"page":1,"quote":m.group(0)[:160]})
 
     name=Path(filename).stem.lower().replace("_"," ").replace("-"," ")
     if "invoice" in name: dtype="Commercial Invoice"
     elif "packing" in name or re.search(r"\b(pkl|pack list)\b",name): dtype="Packing List"
     elif "bill of lading" in name or re.search(r"\b(bl|bol)\b",name): dtype="Bill of Lading"
     elif "origin" in name or "coo" in name: dtype="Certificate of Origin"
+    elif "health" in name: dtype="Health Certificate"
+    elif "phyto" in name: dtype="Phytosanitary Certificate"
+    elif "fumigation" in name: dtype="Fumigation Certificate"
     elif "eur1" in name or "eur 1" in name: dtype="EUR.1"
     else:
-        head=text[:5000].lower()
-        if "bill of lading" in head or "shipper" in head and "notify party" in head: dtype="Bill of Lading"
+        head=text[:8000].lower()
+        if "bill of lading" in head or ("shipper" in head and "notify party" in head): dtype="Bill of Lading"
         elif "packing list" in head: dtype="Packing List"
         elif "commercial invoice" in head or re.search(r"\binvoice\b",head): dtype="Commercial Invoice"
         elif "certificate of origin" in head: dtype="Certificate of Origin"
+        elif "health certificate" in head: dtype="Health Certificate"
         else: dtype="Unknown"
 
     chars=len(text.strip())
-    warnings=["AI key unavailable or AI extraction failed; conservative text-pattern extraction was used."]
+    warnings=[]
     if chars < 80:
-        warnings.append("No selectable PDF text was found. This appears to be a scanned/image PDF; OCR requires a working OpenAI API key and Vision enabled.")
+        warnings.append("No selectable PDF text was found. This is likely a scanned PDF. Enable Vision and configure a valid OpenAI API key for image reading.")
     else:
-        warnings.append(f"Selectable text detected: {chars} characters. Pattern extraction is limited; configure a working OpenAI API key for full document reading.")
+        warnings.append(f"Fallback text extraction used ({chars} characters). Full AI extraction was unavailable; check the OpenAI key, model access and API error below.")
     return {"document_type":dtype,"classification_confidence":"medium" if dtype!="Unknown" else "low",
             "page_count":len(pages),"data":data,"evidence":evidence,"warnings":warnings,
             "text_characters":chars}
@@ -166,6 +205,19 @@ def extract_document(filename, raw, api_key="", model="gpt-4.1-mini", use_vision
     result.setdefault("warnings",[])
     result.setdefault("data",{})
     result.setdefault("evidence",[])
+    # Reject common hallucinated/form-heading values before verification.
+    for key, value in list(result.get("data", {}).items()):
+        cleaned=_clean_value(key,value)
+        if cleaned in (None, []):
+            result["data"][key]=None if key!="lot_numbers" else []
+        else:
+            result["data"][key]=cleaned
+    if api_key and any("AI processing error:" in str(w) for w in result["warnings"]):
+        result["ai_status"]="fallback_after_error"
+    elif api_key:
+        result["ai_status"]="ai_extraction"
+    else:
+        result["ai_status"]="no_api_key"
     return result
 
 def _norm(field,val):
