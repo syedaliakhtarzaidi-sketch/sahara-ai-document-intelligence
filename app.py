@@ -244,12 +244,17 @@ if page == "Shipment Analysis":
         if findings and docs:
             doc_headers=[]
             for i,doc in enumerate(docs):
-                dtype=doc.get("document_type","Document")
-                fname=doc.get("filename","")
-                doc_headers.append(f"{dtype} · {fname}")
+                dtype=str(doc.get("document_type") or "").strip()
+                fname=str(doc.get("filename") or "").lower()
+                if "invoice" in dtype.lower() or "invoice" in fname: header="Invoice"
+                elif "packing" in dtype.lower() or "packing" in fname: header="Packing List"
+                elif "bill of lading" in dtype.lower() or re.search(r"(^|[^a-z])bl([^a-z]|$)",fname): header="BL"
+                else: header=dtype or f"Document {i+1}"
+                if header in doc_headers: header=f"{header} {doc_headers.count(header)+1}"
+                doc_headers.append(header)
             rows=[]
             for item in findings:
-                row={"Check":item.get("field","Unlabelled field")}
+                row={"Verification":item.get("field","Unlabelled field")}
                 values=item.get("document_values",[])
                 for i,header in enumerate(doc_headers):
                     val=next((v.get("value","NOT SHOWN") for v in values if v.get("document_index")==i),"NOT SHOWN")
@@ -257,17 +262,7 @@ if page == "Shipment Analysis":
                 status=item.get("status","REVIEW")
                 row["Result"]="NOT SHOWN" if status in ("MISSING","REVIEW") else status
                 rows.append(row)
-            st.dataframe(pd.DataFrame(rows),use_container_width=True,hide_index=True)
-            issues=[r for r in rows if r["Result"]!="MATCH"]
-            if issues:
-                with st.expander(f"View mismatches and missing information ({len(issues)})",expanded=True):
-                    st.dataframe(pd.DataFrame(issues),use_container_width=True,hide_index=True)
-            with st.expander("Why was this result given?",expanded=False):
-                for item in findings:
-                    status="NOT SHOWN" if item.get("status") in ("MISSING","REVIEW") else item.get("status")
-                    st.markdown(f"**{item.get('field','Check')} — {status}**")
-                    st.write(item.get("comment",""))
-                    if item.get("evidence"): st.caption(item.get("evidence"))
+            st.table(pd.DataFrame(rows))
         else:
             st.info("No comparable fields were extracted. Check the uploaded documents and AI/OCR settings.")
 
