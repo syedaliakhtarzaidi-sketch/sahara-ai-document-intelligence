@@ -22,72 +22,77 @@ GREEN = "#39745B"
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
-:root { --ink:#172D28; --forest:#173B32; --forest2:#245344; --gold:#B99A62; --muted:#718078; --paper:#F5F4EF; --line:#E5E4DC; }
-html, body, [class*="css"] {font-family:'DM Sans',sans-serif;}
-.stApp {background:var(--paper); color:var(--ink);}
-.block-container {padding-top:1.35rem; padding-bottom:3rem; max-width:1480px;}
-[data-testid="stSidebar"] {background:#142F29; border-right:1px solid #29473E;}
-[data-testid="stSidebar"] * {color:#F4F2E9;}
-[data-testid="stSidebar"] [data-testid="stRadio"] label {padding:9px 12px; border-radius:9px;}
-[data-testid="stSidebar"] [data-testid="stRadio"] label:hover {background:#23483D;}
-[data-testid="stSidebar"] hr {border-color:#35564B;}
-.brand-mark {font-family:'Playfair Display',serif; font-size:27px; letter-spacing:2px; color:#F5F0E4; font-weight:700;}
-.brand-sub {font-size:9px; letter-spacing:2.2px; color:#C6B58D; text-transform:uppercase; margin-top:-5px;}
-.sidebar-note {background:#1E4036; border:1px solid #34584B; border-radius:12px; padding:13px; color:#D8E3DC; font-size:12px; line-height:1.6;}
-.hero {background:linear-gradient(112deg,#142F29 0%,#1F4B3D 62%,#315B49 100%); padding:31px 34px; border-radius:19px; color:#fff; margin:0 0 22px 0; box-shadow:0 12px 30px rgba(20,47,41,.12); position:relative; overflow:hidden;}
-.hero:after {content:""; position:absolute; width:250px; height:250px; right:-70px; top:-120px; border:1px solid rgba(205,181,130,.28); border-radius:50%; box-shadow:0 0 0 24px rgba(205,181,130,.04),0 0 0 48px rgba(205,181,130,.035);}
-.hero-kicker {font-size:10px; letter-spacing:2.6px; text-transform:uppercase; color:#D7C49A; margin-bottom:10px;}
-.hero h1 {font-family:'Playfair Display',serif; font-size:36px; line-height:1.12; margin:0; color:#FFFDF7; font-weight:600;}
-.hero p {color:#D6E2DB; margin:10px 0 0 0; font-size:13px; max-width:760px;}
-.hero-tag {display:inline-block; margin-top:19px; border:1px solid rgba(220,202,159,.45); color:#E6D8B8; border-radius:30px; padding:6px 11px; font-size:10px; letter-spacing:1px; text-transform:uppercase;}
-.section-head {display:flex; align-items:center; gap:10px; color:#1C3A31; font-size:15px; font-weight:700; letter-spacing:.2px; margin:24px 0 12px;}
-.section-no {font-size:10px; color:#A1844D; letter-spacing:1.5px; font-weight:700;}
-.kpi {background:#FFFEFA; border:1px solid var(--line); border-radius:15px; padding:17px 18px; min-height:105px; box-shadow:0 3px 12px rgba(27,48,39,.025);}
-.kpi .v {font-family:'Playfair Display',serif; font-size:25px; font-weight:600; color:#1A3B31; margin-top:5px;}
-.kpi .l {font-size:9px; color:#8A918A; text-transform:uppercase; letter-spacing:1.5px; font-weight:700;}
-.small-muted {color:#7C887F; font-size:11px; margin-top:3px;}
-div[data-testid="stFileUploader"] {background:#FFFEFA; border:1px dashed #B9B49F; border-radius:15px; padding:13px;}
-div[data-testid="stFileUploader"] section {background:transparent;}
-.stButton>button, .stDownloadButton>button {border-radius:10px; font-weight:600; min-height:42px; border:1px solid #D8D8CE;}
-.stButton>button[kind="primary"] {background:#1D493B; border:1px solid #1D493B; color:#fff;}
-.stButton>button[kind="primary"]:hover {background:#2B5B49; border-color:#2B5B49;}
-.stTextInput input, .stSelectbox div[data-baseweb="select"], .stTextArea textarea {border-radius:9px!important; background:#FFFEFA!important;}
-div[data-testid="stExpander"] {background:#FFFEFA; border:1px solid var(--line); border-radius:12px;}
-div[data-testid="stDataFrame"] {border:1px solid var(--line); border-radius:12px; overflow:hidden;}
-hr {border-color:#E2E1D8;}
-.caption-line {font-size:11px; color:#7C887F; line-height:1.6;}
-.result-banner {padding:13px 16px; border-radius:12px; background:#F0EEE5; border:1px solid #E4DFD0; color:#49584F; font-size:12px;}
-.footer-note {border-top:1px solid #E2E1D8; margin-top:28px; padding-top:13px; color:#89928A; font-size:10px; letter-spacing:.3px;}
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+:root {--bg:#080F18;--panel:#101C29;--panel2:#142333;--line:#233849;--text:#E8F0F4;--muted:#91A4B3;--cyan:#65D9D0;--blue:#6AA8FF;--amber:#D8B875;}
+html,body,[class*="css"]{font-family:'DM Sans',sans-serif;}
+.stApp{background:radial-gradient(ellipse at 80% 0%,#14283A 0%,#080F18 48%);color:var(--text);}
+.block-container{padding-top:1.25rem;padding-bottom:3rem;max-width:1500px;}
+[data-testid="stSidebar"]{background:#0B1520;border-right:1px solid #1D3142;}
+[data-testid="stSidebar"] *{color:#E6EFF3;}
+[data-testid="stSidebar"] [data-testid="stRadio"] label{padding:10px 12px;border-radius:9px;}
+[data-testid="stSidebar"] [data-testid="stRadio"] label:hover{background:#172A3A;}
+[data-testid="stSidebar"] hr{border-color:#263C4D;}
+.brand-mark{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:700;letter-spacing:3px;color:#F1F7F8;}
+.brand-sub{font-size:9px;letter-spacing:2.1px;color:#6EDBD1;text-transform:uppercase;margin-top:-5px;}
+.sidebar-note{background:linear-gradient(145deg,#132638,#101C29);border:1px solid #294355;border-radius:13px;padding:14px;color:#B8C9D2;font-size:11px;line-height:1.8;}
+.hero{background:linear-gradient(112deg,#101E2C 0%,#142A3B 55%,#173D4B 100%);padding:29px 32px;border:1px solid #2A4657;border-radius:18px;color:#fff;margin:0 0 21px;box-shadow:0 18px 45px rgba(0,0,0,.2);position:relative;overflow:hidden;min-height:208px;}
+.hero:before{content:"";position:absolute;width:230px;height:230px;right:55px;top:-12px;border-radius:50%;background:radial-gradient(circle at 45% 45%,rgba(101,217,208,.22),rgba(101,168,255,.08) 38%,transparent 68%);filter:blur(2px);}
+.hero:after{content:"";position:absolute;width:170px;height:170px;right:85px;top:8px;border:1px solid rgba(101,217,208,.27);border-radius:50%;box-shadow:0 0 0 16px rgba(101,217,208,.035),0 0 0 34px rgba(101,217,208,.025),inset 0 0 25px rgba(101,217,208,.07);}
+.hero-kicker{font-size:9px;letter-spacing:2.8px;text-transform:uppercase;color:#6EDBD1;margin-bottom:12px;position:relative;z-index:1;}
+.hero h1{font-family:'Space Grotesk',sans-serif;font-size:35px;line-height:1.1;margin:0;color:#F2F7F9;font-weight:600;position:relative;z-index:1;}
+.hero p{color:#AFC2CE;margin:11px 0 0;font-size:13px;max-width:690px;position:relative;z-index:1;}
+.hero-tag{display:inline-flex;margin-top:18px;border:1px solid #3B6671;color:#A4E9E1;border-radius:6px;padding:6px 10px;font-size:9px;letter-spacing:1.4px;text-transform:uppercase;position:relative;z-index:1;}
+.agent-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid #315A61;background:#102B35;color:#9CE8DF;padding:6px 10px;border-radius:30px;font-size:9px;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:16px;position:relative;z-index:1;}
+.agent-dot{width:6px;height:6px;background:#65D9D0;border-radius:50%;box-shadow:0 0 9px #65D9D0;}
+.section-head{display:flex;align-items:center;gap:10px;color:#DDE9EF;font-size:14px;font-weight:700;letter-spacing:.3px;margin:24px 0 12px;}
+.section-no{font-family:'Space Grotesk',sans-serif;font-size:10px;color:#65D9D0;letter-spacing:1.4px;font-weight:700;}
+.kpi{background:linear-gradient(145deg,#132333,#101B27);border:1px solid #263D4F;border-radius:13px;padding:16px 17px;min-height:104px;box-shadow:0 5px 20px rgba(0,0,0,.12);}
+.kpi .v{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:600;color:#EAF5F6;margin-top:7px;}
+.kpi .l{font-size:9px;color:#7F9AAA;text-transform:uppercase;letter-spacing:1.6px;font-weight:700;}
+.small-muted{color:#8FA4B1;font-size:10px;margin-top:4px;}
+div[data-testid="stFileUploader"]{background:#101D2A;border:1px dashed #41616F;border-radius:14px;padding:13px;}
+div[data-testid="stFileUploader"] section{background:transparent;}
+.stButton>button,.stDownloadButton>button{border-radius:8px;font-weight:600;min-height:42px;border:1px solid #355166;background:#142638;color:#E8F0F4;}
+.stButton>button[kind="primary"]{background:linear-gradient(100deg,#1C8D8B,#256E91);border:1px solid #3BAEAA;color:white;box-shadow:0 5px 18px rgba(38,156,157,.16);}
+.stButton>button[kind="primary"]:hover{background:linear-gradient(100deg,#24A6A1,#2D83A9);border-color:#65D9D0;}
+.stTextInput input,.stSelectbox div[data-baseweb="select"],.stTextArea textarea{border-radius:8px!important;background:#101D2A!important;color:#EAF2F5!important;border-color:#2B4355!important;}
+.stTextInput label,.stSelectbox label,.stTextArea label,.stCheckbox label{color:#C2D0D8!important;}
+div[data-testid="stExpander"]{background:#101D2A;border:1px solid #293F50;border-radius:11px;}
+div[data-testid="stDataFrame"]{border:1px solid #294153;border-radius:11px;overflow:hidden;}
+.stMarkdown,.stCaption{color:#C1CFD8;}
+hr{border-color:#263B4D;}
+[data-testid="stAlert"]{border-radius:10px;}
+.footer-note{border-top:1px solid #24394A;margin-top:28px;padding-top:13px;color:#6F8796;font-size:9px;letter-spacing:1px;}
 </style>
 """, unsafe_allow_html=True)
 
 with st.sidebar:
-    st.markdown('<div class="brand-mark">SAHARA</div><div class="brand-sub">UK FOODS · INTELLIGENCE</div>', unsafe_allow_html=True)
+    st.markdown('<div class="brand-mark">SAHARA<span style="color:#65D9D0;">/</span>AI</div><div class="brand-sub">UK FOODS · AGENT CONSOLE</div>', unsafe_allow_html=True)
     st.write("")
-    st.markdown("<div style='font-size:9px;letter-spacing:2px;color:#BBA778;font-weight:700;'>WORKSPACE</div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size:9px;letter-spacing:2px;color:#65D9D0;font-weight:700;'>NAVIGATION</div>", unsafe_allow_html=True)
     page = st.radio(" ", ["Shipment Analysis", "Shipment History", "System Guide"], label_visibility="collapsed")
     st.divider()
-    st.markdown('<div class="sidebar-note"><b style="color:#E2C995;">DOCUMENT INTELLIGENCE</b><br>Recognition<br>Extraction<br>Cross-document verification<br><br><span style="color:#AFC2B7;">Human approval remains essential before customs or supplier action.</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-note"><b style="color:#65D9D0;letter-spacing:1px;">AGENT CAPABILITIES</b><br>01 &nbsp; Document recognition<br>02 &nbsp; Data extraction<br>03 &nbsp; Cross-file reasoning<br>04 &nbsp; Discrepancy reporting<br><br><span style="color:#91A4B3;">AI-assisted analysis. Final decisions remain with your team.</span></div>', unsafe_allow_html=True)
     st.write("")
-    st.caption("SAHARA · PRIVATE WORKSPACE")
+    st.caption("CONTROLLED REVIEW ENVIRONMENT")
 
 if page == "Shipment Analysis":
     st.markdown("""
     <div class="hero">
-      <div class="hero-kicker">SAHARA UK FOODS · IMPORT OPERATIONS</div>
-      <h1>Document Intelligence</h1>
-      <p>A considered review of your shipment paperwork — from document extraction to cross-document consistency and supplier follow-up.</p>
-      <span class="hero-tag">Import document review suite</span>
+      <div class="agent-chip"><span class="agent-dot"></span> SAHARA AI AGENT &nbsp;·&nbsp; CONTROLLED MODE</div>
+      <div class="hero-kicker">IMPORT OPERATIONS / INTELLIGENCE SYSTEM</div>
+      <h1>Your shipment review agent.</h1>
+      <p>Upload the paperwork. The agent reads each document, extracts shipment data, checks consistency across files and prepares a structured review for your approval.</p>
+      <span class="hero-tag">Perception &nbsp; / &nbsp; Extraction &nbsp; / &nbsp; Verification</span>
     </div>""", unsafe_allow_html=True)
 
     c1,c2,c3 = st.columns(3)
     with c1:
-        st.markdown('<div class="kpi"><div class="l">Review workflow</div><div class="v">01 — 06</div><div class="small-muted">Upload to final report</div></div>',unsafe_allow_html=True)
+        st.markdown('<div class="kpi"><div class="l">Agent workflow</div><div class="v">03 stages</div><div class="small-muted">Read · compare · report</div></div>',unsafe_allow_html=True)
     with c2:
-        st.markdown('<div class="kpi"><div class="l">Supported input</div><div class="v">PDF / TXT</div><div class="small-muted">Multiple files per shipment</div></div>',unsafe_allow_html=True)
+        st.markdown('<div class="kpi"><div class="l">Input channel</div><div class="v">Multi-file</div><div class="small-muted">PDF and text documents</div></div>',unsafe_allow_html=True)
     with c3:
-        st.markdown('<div class="kpi"><div class="l">Decision control</div><div class="v">Human-led</div><div class="small-muted">No automatic email or customs filing</div></div>',unsafe_allow_html=True)
+        st.markdown('<div class="kpi"><div class="l">Decision authority</div><div class="v">Human</div><div class="small-muted">Review required before action</div></div>',unsafe_allow_html=True)
 
     st.markdown('<div class="section-head"><span class="section-no">01</span> Shipment reference</div>',unsafe_allow_html=True)
     a,b = st.columns([2,1])
@@ -187,7 +192,7 @@ if page == "Shipment Analysis":
             st.download_button("Download PDF verification report",pdf,file_name="sahara_shipment_verification.pdf",mime="application/pdf",use_container_width=True)
 
 elif page == "Shipment History":
-    st.markdown('<div class="hero"><div class="hero-kicker">SAHARA UK FOODS · RECORDS</div><h1>Shipment History</h1><p>Previously analysed shipment reviews stored in this app environment.</p><span class="hero-tag">Review archive</span></div>',unsafe_allow_html=True)
+    st.markdown('<div class="hero"><div class="agent-chip"><span class="agent-dot"></span> AGENT MEMORY / LOCAL ARCHIVE</div><div class="hero-kicker">SAHARA AI · RECORDS</div><h1>Shipment history.</h1><p>Review previously processed shipments and revisit the records saved in this app environment.</p><span class="hero-tag">Review archive</span></div>',unsafe_allow_html=True)
     from engine import list_shipments
     history=list_shipments()
     if history:
@@ -196,7 +201,7 @@ elif page == "Shipment History":
         st.info("No saved shipment reviews yet. Records are stored locally in the app database.")
 
 else:
-    st.markdown('<div class="hero"><div class="hero-kicker">SAHARA UK FOODS · REFERENCE</div><h1>System Guide</h1><p>A clear guide to the document review workflow, decision statuses and operational safeguards.</p><span class="hero-tag">How the system works</span></div>',unsafe_allow_html=True)
+    st.markdown('<div class="hero"><div class="agent-chip"><span class="agent-dot"></span> SYSTEM KNOWLEDGE / REFERENCE</div><div class="hero-kicker">SAHARA AI · OPERATING PROTOCOL</div><h1>Agent operating guide.</h1><p>Understand how the agent reads, compares and reports shipment information — and where human review is required.</p><span class="hero-tag">Operating protocol</span></div>',unsafe_allow_html=True)
     st.markdown("""
 ### Review sequence
 1. Upload one merged PDF or multiple individual PDF/TXT documents.
