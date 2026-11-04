@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from engine import (
-    extract_document, classify_document, verify_shipment, build_supplier_email,
+    extract_document, verify_shipment, build_supplier_email,
     make_excel_report, make_pdf_report, save_shipment
 )
 
