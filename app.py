@@ -222,66 +222,69 @@ if page == "Shipment Analysis":
     if result:
         st.divider()
         findings=result.get("findings",[])
+        docs=result.get("documents",[])
         mismatch=sum(1 for x in findings if x.get("status")=="MISMATCH")
-        missing=sum(1 for x in findings if x.get("status")=="MISSING")
-        review=sum(1 for x in findings if x.get("status")=="REVIEW")
+        not_shown=sum(1 for x in findings if x.get("status") in ("MISSING","REVIEW"))
         matched=sum(1 for x in findings if x.get("status")=="MATCH")
 
-        st.markdown('<div class="section-head"><span class="section-no">03</span> Shipment result</div>',unsafe_allow_html=True)
-        if mismatch or missing:
-            st.error("ISSUES FOUND — Please review the highlighted items below.")
-        elif review:
-            st.warning("REVIEW REQUIRED — Some details need manual checking.")
+        st.markdown('<div class="section-head"><span class="section-no">03</span> Cross-document verification</div>',unsafe_allow_html=True)
+        if mismatch:
+            st.error("MISMATCH FOUND — Different values were extracted from your uploaded documents.")
+        elif not_shown:
+            st.warning("REVIEW REQUIRED — Some information is not shown in every document.")
         else:
-            st.success("NO MISMATCH DETECTED — Please still verify the original documents.")
+            st.success("MATCH — No differences detected in the fields compared. Please verify source documents.")
 
-        k1,k2,k3,k4=st.columns(4)
-        for col,label,value in [(k1,"MATCH",matched),(k2,"MISMATCH",mismatch),(k3,"MISSING",missing),(k4,"REVIEW",review)]:
+        k1,k2,k3=st.columns(3)
+        for col,label,value in [(k1,"MATCH",matched),(k2,"MISMATCH",mismatch),(k3,"NOT SHOWN",not_shown)]:
             with col:
                 st.markdown(f'<div class="kpi"><div class="l">{label}</div><div class="v">{value}</div></div>',unsafe_allow_html=True)
 
-        st.markdown('<div class="section-head"><span class="section-no">04</span> Document checks</div>',unsafe_allow_html=True)
-        if findings:
+        st.markdown("**Document comparison**")
+        if findings and docs:
+            doc_headers=[]
+            for i,doc in enumerate(docs):
+                dtype=doc.get("document_type","Document")
+                fname=doc.get("filename","")
+                doc_headers.append(f"{dtype} · {fname}")
             rows=[]
             for item in findings:
+                row={"Check":item.get("field","Unlabelled field")}
+                values=item.get("document_values",[])
+                for i,header in enumerate(doc_headers):
+                    val=next((v.get("value","NOT SHOWN") for v in values if v.get("document_index")==i),"NOT SHOWN")
+                    row[header]=val
                 status=item.get("status","REVIEW")
-                values=item.get("normalised_values") or "No value extracted"
-                comment=item.get("comment") or ""
-                rows.append({
-                    "Check": item.get("field","Unlabelled field"),
-                    "Result": status,
-                    "Details": str(values) + ((" — " + str(comment)) if comment else "")
-                })
-            checks_df=pd.DataFrame(rows)
-            st.dataframe(checks_df,use_container_width=True,hide_index=True)
-            issues=[r for r in rows if r["Result"] in ("MISMATCH","MISSING","REVIEW")]
+                row["Result"]="NOT SHOWN" if status in ("MISSING","REVIEW") else status
+                rows.append(row)
+            st.dataframe(pd.DataFrame(rows),use_container_width=True,hide_index=True)
+            issues=[r for r in rows if r["Result"]!="MATCH"]
             if issues:
-                with st.expander(f"View issues requiring attention ({len(issues)})",expanded=True):
+                with st.expander(f"View mismatches and missing information ({len(issues)})",expanded=True):
                     st.dataframe(pd.DataFrame(issues),use_container_width=True,hide_index=True)
-            else:
-                st.success("No issues were flagged in the fields compared.")
-            with st.expander("View document evidence",expanded=False):
+            with st.expander("Why was this result given?",expanded=False):
                 for item in findings:
-                    st.markdown(f"**{item.get('field','Check')} — {item.get('status','REVIEW')}**")
-                    st.write(item.get("evidence") or "No supporting evidence extracted.")
+                    status="NOT SHOWN" if item.get("status") in ("MISSING","REVIEW") else item.get("status")
+                    st.markdown(f"**{item.get('field','Check')} — {status}**")
+                    st.write(item.get("comment",""))
+                    if item.get("evidence"): st.caption(item.get("evidence"))
         else:
-            st.info("No comparable fields were extracted. Check document details and AI/OCR settings.")
+            st.info("No comparable fields were extracted. Check the uploaded documents and AI/OCR settings.")
 
-        st.markdown('<div class="section-head"><span class="section-no">05</span> Extracted document details</div>',unsafe_allow_html=True)
-        for doc in result.get("documents",[]):
+        st.markdown('<div class="section-head"><span class="section-no">04</span> Extracted document details</div>',unsafe_allow_html=True)
+        for doc in docs:
             with st.expander(f"{doc.get('document_type','Unknown')} · {doc.get('filename','')}",expanded=False):
                 st.write("**Classification confidence:**",doc.get("classification_confidence","Not provided"))
                 st.write("**Pages / text evidence:**",doc.get("page_count",0))
                 st.json(doc.get("data",{}))
-                if doc.get("warnings"):
-                    st.warning(" · ".join(doc["warnings"]))
+                if doc.get("warnings"): st.warning(" · ".join(doc["warnings"]))
 
-        st.markdown('<div class="section-head"><span class="section-no">06</span> Supplier follow-up</div>',unsafe_allow_html=True)
+        st.markdown('<div class="section-head"><span class="section-no">05</span> Supplier follow-up</div>',unsafe_allow_html=True)
         email=build_supplier_email(result)
         st.text_area("Email draft — review before sending",value=email,height=220)
         st.download_button("Download email (.txt)",email.encode("utf-8"),file_name="sahara_supplier_discrepancy_email.txt")
 
-        st.markdown('<div class="section-head"><span class="section-no">07</span> Download report</div>',unsafe_allow_html=True)
+        st.markdown('<div class="section-head"><span class="section-no">06</span> Download report</div>',unsafe_allow_html=True)
         ex1,ex2=st.columns(2)
         with ex1:
             xlsx=make_excel_report(result)
