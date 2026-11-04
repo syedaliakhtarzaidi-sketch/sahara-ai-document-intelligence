@@ -68,23 +68,59 @@ def _call_openai(prompt, api_key, model, image_bytes=None):
     return json.loads(response.choices[0].message.content)
 
 def _basic_extract(filename, pages):
-    text="\n".join(x["text"] for x in pages)
+    text="\n".join(x.get("text","") for x in pages)
+    data={k:None for k in FIELDS}; evidence=[]
+
+    # Conservative labelled-field extraction for selectable-text PDFs.
     patterns={
       "container_number":r"\b[A-Z]{4}\s?\d{7}\b",
-      "seal_number":r"(?:seal(?:\s*(?:no|number))?[:\s#-]*)\s*([A-Z0-9-]{5,})",
-      "bl_number":r"(?:B/L|BILL OF LADING)\s*(?:NO\.?|NUMBER)?[:\s#-]*([A-Z0-9-]{6,})",
-      "invoice_number":r"(?:INVOICE\s*(?:NO\.?|NUMBER|#)?)[:\s#-]*([A-Z0-9/-]{4,})",
-      "hs_code":r"(?:HS(?:\s*CODE)?|COMMODITY CODE)[:\s#-]*([0-9.]{6,12})"
+      "seal_number":r"(?:seal(?:\s*(?:no|number))?|container\s*seal)\s*[:#-]?\s*([A-Z0-9/-]{4,})",
+      "bl_number":r"(?:B\s*/\s*L|BILL\s+OF\s+LADING)\s*(?:NO\.?|NUMBER|#)?\s*[:#-]?\s*([A-Z0-9/-]{5,})",
+      "invoice_number":r"(?:COMMERCIAL\s+)?INVOICE\s*(?:NO\.?|NUMBER|#)?\s*[:#-]\s*([A-Z0-9/-]{3,})",
+      "hs_code":r"(?:HS(?:\s*CODE)?|HARMONI[ZS]ED\s+CODE|COMMODITY\s+CODE)\s*[:#-]?\s*([0-9.]{6,12})",
+      "country_of_origin":r"(?:COUNTRY\s+OF\s+ORIGIN|ORIGIN\s+OF\s+GOODS)\s*[:#-]?\s*([A-Z][A-Z ,()-]{2,45})",
+      "port_of_loading":r"(?:PORT\s+OF\s+LOADING|PLACE\s+OF\s+RECEIPT)\s*[:#-]?\s*([A-Z][A-Z ,()-]{2,55})",
+      "port_of_discharge":r"(?:PORT\s+OF\s+DISCHARGE|PORT\s+OF\s+DESTINATION)\s*[:#-]?\s*([A-Z][A-Z ,()-]{2,55})",
+      "vessel":r"(?:VESSEL|SHIP\s+NAME)\s*[:#-]?\s*([A-Z0-9][A-Z0-9 .'-]{2,50})",
+      "voyage":r"(?:VOYAGE|VOY(?:AGE)?\s*NO\.?)\s*[:#-]?\s*([A-Z0-9/-]{2,20})",
+      "cartons_packages":r"(?:TOTAL\s+)?(?:NO\.?\s+OF\s+)?(?:CARTONS|PACKAGES|PKGS|CASES)\s*[:#-]?\s*([0-9,]+(?:\s*(?:CARTONS|PACKAGES|PKGS|CASES))?)",
+      "net_weight":r"(?:NET\s+WEIGHT|N\.?\s*W\.?)\s*[:#-]?\s*([0-9,.]+\s*(?:KG|KGS|MT|TONS?)?)",
+      "gross_weight":r"(?:GROSS\s+WEIGHT|G\.?\s*W\.?)\s*[:#-]?\s*([0-9,.]+\s*(?:KG|KGS|MT|TONS?)?)",
+      "product_description":r"(?:DESCRIPTION\s+OF\s+GOODS|PRODUCT\s+DESCRIPTION|GOODS\s+DESCRIPTION)\s*[:#-]?\s*([^\n]{3,120})",
+      "supplier_exporter":r"(?:EXPORTER|SHIPPER|SELLER|SUPPLIER)\s*[:#-]?\s*([^\n]{3,120})",
+      "consignee_importer":r"(?:CONSIGNEE|IMPORTER|BUYER)\s*[:#-]?\s*([^\n]{3,120})",
+      "lot_numbers":r"(?:LOT|BATCH)\s*(?:NO\.?|NUMBER|#)?\s*[:#-]?\s*([A-Z0-9, /-]{3,60})"
     }
-    data={k:None for k in FIELDS}; evidence=[]
     for field,pat in patterns.items():
         m=re.search(pat,text,re.I)
         if m:
-            val=(m.group(1) if m.lastindex else m.group(0)).strip()
+            val=(m.group(1) if m.lastindex else m.group(0)).strip(" \t\r\n:;-")
             data[field]=val
             evidence.append({"field":field,"value":val,"page":1,"quote":m.group(0)[:160]})
-    return {"document_type":"Unknown","classification_confidence":"low","page_count":len(pages),
-            "data":data,"evidence":evidence,"warnings":["AI key unavailable or AI extraction failed; only basic pattern extraction was attempted."]}
+
+    name=Path(filename).stem.lower().replace("_"," ").replace("-"," ")
+    if "invoice" in name: dtype="Commercial Invoice"
+    elif "packing" in name or re.search(r"\b(pkl|pack list)\b",name): dtype="Packing List"
+    elif "bill of lading" in name or re.search(r"\b(bl|bol)\b",name): dtype="Bill of Lading"
+    elif "origin" in name or "coo" in name: dtype="Certificate of Origin"
+    elif "eur1" in name or "eur 1" in name: dtype="EUR.1"
+    else:
+        head=text[:5000].lower()
+        if "bill of lading" in head or "shipper" in head and "notify party" in head: dtype="Bill of Lading"
+        elif "packing list" in head: dtype="Packing List"
+        elif "commercial invoice" in head or re.search(r"\binvoice\b",head): dtype="Commercial Invoice"
+        elif "certificate of origin" in head: dtype="Certificate of Origin"
+        else: dtype="Unknown"
+
+    chars=len(text.strip())
+    warnings=["AI key unavailable or AI extraction failed; conservative text-pattern extraction was used."]
+    if chars < 80:
+        warnings.append("No selectable PDF text was found. This appears to be a scanned/image PDF; OCR requires a working OpenAI API key and Vision enabled.")
+    else:
+        warnings.append(f"Selectable text detected: {chars} characters. Pattern extraction is limited; configure a working OpenAI API key for full document reading.")
+    return {"document_type":dtype,"classification_confidence":"medium" if dtype!="Unknown" else "low",
+            "page_count":len(pages),"data":data,"evidence":evidence,"warnings":warnings,
+            "text_characters":chars}
 
 def extract_document(filename, raw, api_key="", model="gpt-4.1-mini", use_vision=True):
     ext=Path(filename).suffix.lower()
