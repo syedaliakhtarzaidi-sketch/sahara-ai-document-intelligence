@@ -195,7 +195,14 @@ if page == "Shipment Analysis":
         st.caption("Without an API key, the app can still extract selectable PDF text and produce a basic evidence inventory, but AI classification and reasoning will be disabled.")
         include_page_images = st.checkbox("Use vision analysis for scanned / image-based PDF pages", value=True)
 
-    run = st.button("Analyse shipment documents", type="primary", disabled=not uploaded, use_container_width=True)
+    if not api_key.strip():
+        st.error("AI is not connected. Add OPENAI_API_KEY in Streamlit Cloud → App settings → Secrets before analysing documents. Without AI/OCR, scanned documents cannot be read reliably.")
+    run = st.button(
+        "Analyse shipment documents",
+        type="primary",
+        disabled=(not uploaded or not api_key.strip()),
+        use_container_width=True
+    )
 
     if run:
         st.session_state.pop("analysis_result",None)
