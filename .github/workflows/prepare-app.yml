@@ -2,9 +2,6 @@ name: Prepare Streamlit app
 on:
   push:
     branches: [main]
-    paths:
-      - 'sahara_ai_document_intelligence_v2.zip'
-      - '.github/workflows/prepare-app.yml'
 permissions:
   contents: write
 jobs:
