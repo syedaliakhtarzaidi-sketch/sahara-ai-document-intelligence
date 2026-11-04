@@ -240,20 +240,29 @@ if page == "Shipment Analysis":
             with col:
                 st.markdown(f'<div class="kpi"><div class="l">{label}</div><div class="v">{value}</div></div>',unsafe_allow_html=True)
 
-        # Surface extraction failures before presenting a wall of NOT SHOWN cells.
+        # Surface extraction failures before presenting comparison results.
         extracted_total = sum(
             1 for d in docs for v in d.get("data", {}).values()
             if v not in (None, "", [])
         )
+        ai_docs = sum(1 for d in docs if d.get("ai_status") == "ai_extraction")
+        fallback_docs = len(docs) - ai_docs
+        if fallback_docs:
+            st.error(
+                f"AI EXTRACTION NOT ACTIVE FOR {fallback_docs} OF {len(docs)} DOCUMENTS. "
+                "The comparison below may be incomplete. Check the OpenAI API key, model access and document-reading errors."
+            )
         if extracted_total == 0:
-            st.error("NO DOCUMENT DATA EXTRACTED — The PDFs were not readable by the current extraction route.")
+            st.error("NO DOCUMENT DATA EXTRACTED — Do not use this report. The uploaded PDFs could not be read.")
         for d in docs:
             warnings = d.get("warnings", [])
             if warnings:
-                with st.expander(f"Reading issue · {d.get('filename', 'Document')}", expanded=(extracted_total == 0)):
-                    st.write("\n".join(f"• {w}" for w in warnings))
-                    st.write(f"Document type: {d.get('document_type', 'Unknown')}")
-                    st.write(f"Extracted fields: {sum(1 for v in d.get('data', {}).values() if v not in (None, '', []))}")
+                st.warning(
+                    f"{d.get('filename', 'Document')} · Type: {d.get('document_type', 'Unknown')} · "
+                    f"Extracted fields: {sum(1 for v in d.get('data', {}).values() if v not in (None, '', []))}"
+                )
+                for warning in warnings:
+                    st.caption("Reading detail: " + str(warning))
 
         st.markdown("**Document comparison**")
         if findings and docs:
