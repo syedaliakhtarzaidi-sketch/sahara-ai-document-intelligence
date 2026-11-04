@@ -63,6 +63,62 @@ div[data-testid="stDataFrame"]{border:1px solid #294153;border-radius:11px;overf
 hr{border-color:#263B4D;}
 [data-testid="stAlert"]{border-radius:10px;}
 .footer-note{border-top:1px solid #24394A;margin-top:28px;padding-top:13px;color:#6F8796;font-size:9px;letter-spacing:1px;}
+
+/* GLOBAL TEXT CONTRAST FIX */
+.stApp,
+.stApp p,
+.stApp li,
+.stApp span,
+.stApp label,
+.stApp small,
+.stApp [data-testid="stMarkdownContainer"],
+.stApp [data-testid="stMarkdownContainer"] p,
+.stApp [data-testid="stMarkdownContainer"] li,
+.stApp [data-testid="stMarkdownContainer"] strong,
+.stApp [data-testid="stCaptionContainer"],
+.stApp .stCaption,
+.stApp [data-testid="stExpander"] summary,
+.stApp [data-testid="stExpander"] details,
+.stApp [data-testid="stWidgetLabel"],
+.stApp [data-testid="stFileUploader"] section,
+.stApp [data-testid="stFileUploader"] small,
+.stApp [data-testid="stRadio"] label,
+.stApp [data-testid="stCheckbox"] label,
+.stApp [data-testid="stSelectbox"] label,
+.stApp [data-testid="stTextInput"] label,
+.stApp [data-testid="stTextArea"] label,
+.stApp [data-testid="stNumberInput"] label,
+.stApp [data-testid="stDateInput"] label,
+.stApp [data-testid="stMultiSelect"] label,
+.stApp [data-testid="stDataFrame"],
+.stApp [data-testid="stTable"] {
+  color: #F1F5F8 !important;
+}
+.stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6 {
+  color: #FFFFFF !important;
+}
+.stApp input, .stApp textarea,
+.stApp [data-baseweb="select"] *,
+.stApp [data-baseweb="input"] *,
+.stApp [data-baseweb="textarea"] * {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+.stApp input::placeholder, .stApp textarea::placeholder {
+  color: #AFC0CC !important;
+  -webkit-text-fill-color: #AFC0CC !important;
+  opacity: 1 !important;
+}
+.stApp [data-testid="stDataFrame"] *,
+.stApp [data-testid="stTable"] * {
+  color: #F1F5F8 !important;
+}
+.stApp [data-baseweb="popover"] *,
+.stApp [role="listbox"] *,
+.stApp [role="option"] {
+  color: #F1F5F8 !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
