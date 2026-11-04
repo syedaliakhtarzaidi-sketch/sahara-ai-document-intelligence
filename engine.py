@@ -146,39 +146,30 @@ def _norm(field,val):
 
 def verify_shipment(docs):
     collected=defaultdict(list)
-    for doc in docs:
+    for doc_index, doc in enumerate(docs):
         for field,val in doc.get("data",{}).items():
             if val not in (None,"",[]):
-                collected[field].append({"value":val,"normalised":_norm(field,val),
-                    "document":doc.get("filename",""),"type":doc.get("document_type","Unknown")})
+                collected[field].append({"value":val,"normalised":_norm(field,val),"document":doc.get("filename",""),"document_index":doc_index,"type":doc.get("document_type","Unknown")})
     findings=[]
-    important=[("container_number","Container number"),("seal_number","Seal number"),
-      ("bl_number","Bill of Lading number"),("invoice_number","Invoice number"),
-      ("supplier_exporter","Supplier / exporter"),("consignee_importer","Consignee / importer"),
-      ("product_description","Product description"),("hs_code","HS / commodity code"),
-      ("country_of_origin","Country of origin"),("port_of_loading","Port of loading"),
-      ("port_of_discharge","Port of discharge"),("vessel","Vessel"),("voyage","Voyage"),
-      ("cartons_packages","Cartons / packages"),("net_weight","Net weight"),
-      ("gross_weight","Gross weight"),("container_size","Container size"),
-      ("container_type","Container type"),("temperature","Temperature"),
-      ("loading_method","Loading method"),("lot_numbers","Lot / batch numbers")]
+    important=[("container_number","Container number"),("seal_number","Seal number"),("bl_number","Bill of Lading number"),("invoice_number","Invoice number"),("supplier_exporter","Supplier / exporter"),("consignee_importer","Consignee / importer"),("product_description","Product description"),("hs_code","HS / commodity code"),("country_of_origin","Country of origin"),("port_of_loading","Port of loading"),("port_of_discharge","Port of discharge"),("vessel","Vessel"),("voyage","Voyage"),("cartons_packages","Cartons / packages"),("net_weight","Net weight"),("gross_weight","Gross weight"),("container_size","Container size"),("container_type","Container type"),("temperature","Temperature"),("loading_method","Loading method"),("lot_numbers","Lot / batch numbers")]
     for field,label in important:
         vals=collected.get(field,[])
-        if len(vals)<2:
-            status="REVIEW" if len(vals)==1 else "MISSING"
-            comment="Found in only one document; cross-check unavailable." if vals else "Not extracted from uploaded documents."
+        distinct={json.dumps(x["normalised"],sort_keys=True) for x in vals}
+        if len(distinct)>1:
+            status="MISMATCH"; comment="Different values found between uploaded documents. Check the source documents."
+        elif len(vals)==len(docs) and len(docs)>1:
+            status="MATCH"; comment="Same value found in every uploaded document."
+        elif vals:
+            status="REVIEW"; comment="This field is not shown in every uploaded document; comparison is incomplete."
         else:
-            distinct={json.dumps(x["normalised"],sort_keys=True) for x in vals}
-            if len(distinct)==1:
-                status="MATCH"; comment="Consistent across documents where present."
-            else:
-                status="MISMATCH"; comment="Different values found. Confirm against originals and corrected source documents."
-        evidence="; ".join(f"{x['document']} ({x['type']}): {x['value']}" for x in vals)
-        findings.append({"field":label,"status":status,"normalised_values":" | ".join(str(x["value"]) for x in vals),
-                         "evidence":evidence,"comment":comment})
-    # Cross-document metadata / warnings
-    return {"findings":findings,"summary":{"documents_received":len(docs)},
-            "document_warnings":[{"filename":d.get("filename"),"warnings":d.get("warnings",[])} for d in docs if d.get("warnings")]}
+            status="MISSING"; comment="This field was not extracted from any uploaded document."
+        evidence="; ".join(str(x["document"])+" ("+str(x["type"])+"): "+str(x["value"]) for x in vals)
+        document_values=[]
+        for i,d in enumerate(docs):
+            value=next((str(x["value"]) for x in vals if x["document_index"]==i),"NOT SHOWN")
+            document_values.append({"document_index":i,"filename":d.get("filename",""),"document_type":d.get("document_type",""),"value":value})
+        findings.append({"field":label,"status":status,"normalised_values":" | ".join(str(x["value"]) for x in vals),"document_values":document_values,"evidence":evidence,"comment":comment})
+    return {"findings":findings,"summary":{"documents_received":len(docs)},"document_warnings":[{"filename":d.get("filename"),"warnings":d.get("warnings",[])} for d in docs if d.get("warnings")]}
 
 def build_supplier_email(result):
     issues=[x for x in result.get("findings",[]) if x.get("status") in ("MISMATCH","MISSING","REVIEW")]
