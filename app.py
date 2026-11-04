@@ -242,10 +242,59 @@ if page == "Shipment Analysis":
 
         st.markdown('<div class="section-head"><span class="section-no">04</span> Cross-document findings</div>',unsafe_allow_html=True)
         if findings:
-            df=pd.DataFrame(findings)
-            preferred=["field","status","normalised_values","evidence","comment"]
-            df=df[[x for x in preferred if x in df.columns]]
-            st.dataframe(df,use_container_width=True,hide_index=True)
+            import html
+            status_filter = st.selectbox(
+                "Filter findings by status",
+                ["All findings", "MISMATCH", "MISSING", "REVIEW", "MATCH"],
+                key="finding_status_filter"
+            )
+            visible_findings = findings if status_filter == "All findings" else [x for x in findings if x.get("status") == status_filter]
+            st.markdown(
+                f'<div style="display:flex;justify-content:space-between;align-items:center;'
+                f'background:#101D2A;border:1px solid #294153;border-radius:10px;padding:11px 15px;'
+                f'margin:5px 0 15px;color:#B9C9D3;font-size:12px;">'
+                f'<span>SHOWING <b style="color:#FFFFFF;">{len(visible_findings)}</b> OF {len(findings)} CHECKS</span>'
+                f'<span style="color:#65D9D0;">EVIDENCE-LED REVIEW</span></div>',
+                unsafe_allow_html=True
+            )
+            status_styles = {
+                "MATCH": ("#153B32", "#72D6A6", "✓"),
+                "MISMATCH": ("#48252B", "#FF8992", "!"),
+                "MISSING": ("#49391F", "#F2C36D", "—"),
+                "REVIEW": ("#243A53", "#8FC4FF", "?")
+            }
+            for row_start in range(0, len(visible_findings), 2):
+                card_cols = st.columns(2, gap="medium")
+                for offset, col in enumerate(card_cols):
+                    idx = row_start + offset
+                    if idx >= len(visible_findings):
+                        continue
+                    item = visible_findings[idx]
+                    status = item.get("status", "REVIEW")
+                    bg, fg, symbol = status_styles.get(status, status_styles["REVIEW"])
+                    field_name = html.escape(str(item.get("field", "Unlabelled field")))
+                    values = html.escape(str(item.get("normalised_values") or "No value extracted"))
+                    comment = html.escape(str(item.get("comment") or "No additional comment"))
+                    with col:
+                        st.markdown(
+                            f'<div style="background:linear-gradient(145deg,#142536,#101B28);'
+                            f'border:1px solid #2A4355;border-radius:13px;padding:16px 17px 14px;'
+                            f'min-height:150px;margin-bottom:8px;">'
+                            f'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">'
+                            f'<div style="font-size:13px;font-weight:700;color:#F4F8FA;">{field_name}</div>'
+                            f'<span style="white-space:nowrap;background:{bg};color:{fg};border:1px solid {fg}55;'
+                            f'border-radius:20px;padding:4px 9px;font-size:9px;font-weight:800;letter-spacing:1px;">'
+                            f'{symbol} &nbsp;{status}</span></div>'
+                            f'<div style="font-size:9px;color:#8EA5B5;letter-spacing:1.3px;margin-top:15px;">'
+                            f'EXTRACTED VALUE(S)</div>'
+                            f'<div style="font-size:12px;line-height:1.6;color:#EAF2F5;margin-top:5px;'
+                            f'overflow-wrap:anywhere;">{values}</div>'
+                            f'<div style="border-top:1px solid #2A4051;margin-top:12px;padding-top:9px;'
+                            f'font-size:11px;line-height:1.5;color:#B5C5CF;">{comment}</div></div>',
+                            unsafe_allow_html=True
+                        )
+                        with st.expander("View document evidence", expanded=False):
+                            st.write(item.get("evidence") or "No supporting document evidence was extracted.")
         else:
             st.info("No comparable fields were extracted. Check the document extraction section and API/OCR configuration.")
 
