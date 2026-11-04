@@ -1,0 +1,29 @@
+name: Prepare Streamlit app
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'sahara_ai_document_intelligence_v2.zip'
+      - '.github/workflows/prepare-app.yml'
+permissions:
+  contents: write
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract project files to repository root
+        run: |
+          python - <<'PY'
+          import zipfile
+          z = zipfile.ZipFile("sahara_ai_document_intelligence_v2.zip")
+          z.extractall("/tmp/sahara")
+          PY
+          cp -R /tmp/sahara/sahara_document_intelligence/. .
+          rm -f sahara_ai_document_intelligence_v2.zip
+      - name: Commit deployable app files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || (git commit -m "Prepare Streamlit app files at repository root" && git push)
